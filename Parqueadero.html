@@ -1,1 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parqueadero</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            text-align: center;
+            padding: 8px;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gestión de Parqueadero</h1>
+    <div id="menu">
+        <button onclick="mostrarMatriz()">Mostrar Matriz</button>
+        <button onclick="ingresoVehiculo()">Ingresar Vehículo</button>
+        <button onclick="salidaVehiculo()">Salida de Vehículo</button>
+        <button onclick="mostrarRecaudos()">Mostrar Recaudos</button>
+    </div>
+    <div id="output"></div>
+
+    <script>
+        // Variables principales
+        const filas = 5, columnas = 10;
+        const parqueo = Array.from({ length: filas }, () => Array(columnas).fill(null));
+        const vehiculos = [];
+        let recaudoTotal = 0, recaudoCarros = 0, recaudoMotos = 0;
+
+        const tarifaCarro = 5000;
+        const tarifaMoto = 3000;
+
+        // Funciones auxiliares
+        function generarPlaca(tipo) {
+            const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const numeros = "0123456789";
+            if (tipo === "carro") {
+                return (
+                    letras[Math.floor(Math.random() * letras.length)] +
+                    letras[Math.floor(Math.random() * letras.length)] +
+                    letras[Math.floor(Math.random() * letras.length)] +
+                    numeros[Math.floor(Math.random() * numeros.length)] +
+                    numeros[Math.floor(Math.random() * numeros.length)] +
+                    numeros[Math.floor(Math.random() * numeros.length)]
+                );
+            } else if (tipo === "moto") {
+                return (
+                    letras[Math.floor(Math.random() * letras.length)] +
+                    letras[Math.floor(Math.random() * letras.length)] +
+                    letras[Math.floor(Math.random() * letras.length)] +
+                    numeros[Math.floor(Math.random() * numeros.length)] +
+                    numeros[Math.floor(Math.random() * numeros.length)] +
+                    letras[Math.floor(Math.random() * letras.length)]
+                );
+            }
+            return null;
+        }
+
+        function mostrarMatriz() {
+            let tabla = "<table><tr>";
+            for (let i = 0; i < columnas; i++) tabla += `<th>${i + 1}</th>`;
+            tabla += "</tr>";
+
+            parqueo.forEach((fila, index) => {
+                tabla += `<tr><th>${String.fromCharCode(65 + index)}</th>`;
+                fila.forEach((celda) => {
+                    tabla += `<td>${celda ? celda : "D"}</td>`;
+                });
+                tabla += "</tr>";
+            });
+            tabla += "</table>";
+
+            document.getElementById("output").innerHTML = tabla;
+        }
+
+        function ingresoVehiculo() {
+            const tipo = prompt("Ingrese el tipo de vehículo (carro/moto):").toLowerCase();
+            if (tipo !== "carro" && tipo !== "moto") {
+                alert("Tipo de vehículo inválido.");
+                return;
+            }
+
+            const placa = generarPlaca(tipo);
+            const horaEntrada = parseInt(prompt("Ingrese la hora de entrada (hora):"));
+            if (isNaN(horaEntrada)) {
+                alert("Hora inválida.");
+                return;
+            }
+
+            for (let i = 0; i < filas; i++) {
+                for (let j = 0; j < columnas; j++) {
+                    if (parqueo[i][j] === null) {
+                        parqueo[i][j] = placa;
+                        vehiculos.push({ placa, tipo, horaEntrada });
+                        alert(`Vehículo ingresado en (${String.fromCharCode(65 + i)}, ${j + 1}) con placa ${placa}.`);
+                        return;
+                    }
+                }
+            }
+
+            alert("No hay espacios disponibles.");
+        }
+
+        function salidaVehiculo() {
+            const placa = prompt("Ingrese la placa del vehículo que salió:");
+            const vehiculo = vehiculos.find((v) => v.placa === placa);
+
+            if (!vehiculo) {
+                alert("Vehículo no encontrado.");
+                return;
+            }
+
+            const horaSalida = parseInt(prompt("Ingrese la hora de salida:"));
+            if (isNaN(horaSalida) || horaSalida <= vehiculo.horaEntrada) {
+                alert("Hora de salida inválida.");
+                return;
+            }
+
+            const tiempoParqueo = horaSalida - vehiculo.horaEntrada;
+            let costo = 0;
+
+            if (vehiculo.tipo === "carro") {
+                costo = tiempoParqueo * tarifaCarro;
+                recaudoCarros += costo;
+            } else if (vehiculo.tipo === "moto") {
+                costo = tiempoParqueo * tarifaMoto;
+                recaudoMotos += costo;
+            }
+            recaudoTotal += costo;
+
+            // Remover de la matriz y lista
+            for (let i = 0; i < filas; i++) {
+                for (let j = 0; j < columnas; j++) {
+                    if (parqueo[i][j] === placa) {
+                        parqueo[i][j] = null;
+                    }
+                }
+            }
+
+            // Crear y descargar la factura
+            const factura = `*** Factura ***\nPlaca: ${vehiculo.placa}\nTipo: ${vehiculo.tipo}\nHora de entrada: ${vehiculo.horaEntrada}\nHora de salida: ${horaSalida}\nTiempo de parqueo: ${tiempoParqueo} horas\nCosto: $${costo}`;
+            const blob = new Blob([factura], { type: "text/plain" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Factura_${vehiculo.placa}.txt`;
+            link.click();
+
+            alert("Factura generada y descargada.");
+            vehiculos.splice(vehiculos.indexOf(vehiculo), 1);
+        }
+
+        function mostrarRecaudos() {
+            alert(`Recaudo total: $${recaudoTotal}\nRecaudo de carros: $${recaudoCarros}\nRecaudo de motos: $${recaudoMotos}`);
+        }
+    </script>
+</body>
+</html>
 
